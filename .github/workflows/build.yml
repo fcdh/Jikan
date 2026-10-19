@@ -1,44 +1,55 @@
-name: Build and Release Tweak
-
-permissions:
-    contents: write
+name: Build Jikan for Roothide
 
 on:
-    push:
-        branches:
-            - main
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
 
 jobs:
-    build:
-        runs-on: macos-latest
-        strategy:
-            matrix:
-                scheme: [rootful, rootless, roothide]
-                include:
-                    - scheme: rootful
-                      scheme_arg: ""
-                    - scheme: rootless
-                      scheme_arg: "THEOS_PACKAGE_SCHEME=rootless"
-                    - scheme: roothide
-                      scheme_arg: "THEOS_PACKAGE_SCHEME=roothide"
-        steps:
-            - uses: actions/checkout@v7
+  build:
+    runs-on: macos-latest
 
-            - name: Set up Theos
-              uses: waruhachi/theos-action@v2.6.3
-              with:
-                  theos-src: "waruhachi/theos"
-                  theos-branch: "main"
-                  sdks-src: "waruhachi/sdks"
-                  sdks-branch: "main"
+    steps:
+      - name: Checkout Jikan
+        uses: actions/checkout@v4
 
-            - name: Build Package
-              shell: bash
-              run: |
-                  make clean package ${{ matrix.scheme_arg }}
+      - name: Setup Theos
+        uses: waruhachi/theos-action@v2.6.3
+        with:
+          theos-src: waruhachi/theos
+          theos-branch: main
+          sdks-src: waruhachi/sdks
+          sdks-branch: main
+          remotelog: true
+          remotelog-src: waruhachi/RemoteLog
+          remotelog-branch: main
+          libgcuniversal: true
+          libgcuniversal-src: waruhachi/LibGcUniversal
+          libgcuniversal-branch: main
+          altlist: true
+          altlist-src: opa334/AltList
+          altlist-branch: main
+          comet: true
+          comet-src: waruhachi/Comet
+          comet-branch: main
+          orion: true
+          orion-src: theos/orion
+          orion-branch: master
 
-            - name: Upload DEB
-              uses: actions/upload-artifact@v7
-              with:
-                  name: ${{ matrix.scheme }}-package
-                  path: packages/*.deb
+      - name: Build Jikan
+        run: |
+          set -o pipefail
+          make clean
+          make package FINALPACKAGE=1 THEOS_PACKAGE_SCHEME=roothide
+
+      - name: Upload Debian package
+        uses: actions/upload-artifact@v4
+        with:
+          name: Jikan-Roothide-deb
+          path: packages/*.deb
+          if-no-files-found: error
+          retention-days: 7
